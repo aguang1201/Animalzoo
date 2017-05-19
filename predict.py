@@ -11,8 +11,8 @@ from keras.models import load_model
 from keras.applications.inception_v3 import preprocess_input
 from config import config
 import cv2
-import glob
 import os
+from skimage import io
 
 TRAIN_DIR = config['train_dir']
 target_size = (config['im_width'], config['im_height']) #fixed size for InceptionV3 architecture
@@ -37,22 +37,22 @@ def predict(model, img, target_size):
   return preds[0]
 
 
-def plot_preds(image, preds):
+def plot_preds(img_array, preds):
   """Displays image and the top-n predicted probabilities in a bar graph
   Args:
-    image: PIL image
+    img: PIL image
     preds: list of predicted labels and their probabilities
   """
-  orig = cv2.imread(image)
   preds_index = np.argmax(preds)
   preds_name = classes[preds_index]
   prob = np.max(preds)
 
-  cv2.putText(orig, 'AI guess it`s {}'.format(preds_name), (10, 30),
-              cv2.FONT_HERSHEY_SIMPLEX, 0.8,(0, 0, 255),2)
-  cv2.putText(orig, 'probality is {:.2f}%'.format(prob * 100), (10, 70),
+
+  cv2.putText(img_array, 'AI guess it`s a {}'.format(preds_name), (10, 30),
               cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-  cv2.imshow('Classifiction', orig)
+  cv2.putText(img_array, 'probality is {:.2f}%'.format(prob * 100), (10, 70),
+              cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+  cv2.imshow('Classifiction', img_array)
   cv2.waitKey(0)
 
   plt.figure()
@@ -66,8 +66,10 @@ def plot_preds(image, preds):
 
 if __name__=="__main__":
   a = argparse.ArgumentParser()
-  a.add_argument("--image", default="/data1/cat_dog_fire/test1/5.jpg", help="path to image")
-  a.add_argument("--image_url", default="", help="url to image")
+  a.add_argument("--image", default="/data1/cat_dog_fire/test1/10.jpg", help="path to image")
+  a.add_argument("--image_url", help="url to image")
+  #a.add_argument("--image", help="path to image")
+  #a.add_argument("--image_url", default="http://farm1.static.flickr.com/86/209203070_ac7c4ce5a2.jpg", help="url to image")
   a.add_argument("--model", default="inceptionv3_dog_cat20170518.model")
   args = a.parse_args()
 
@@ -76,13 +78,16 @@ if __name__=="__main__":
     sys.exit(1)
 
   model = load_model(args.model)
-  if args.image is not None:
-    img = Image.open(args.image)
+  if args.image is not None and args.image is not "":
+    image_path = args.image
+    img = Image.open(image_path)
     preds = predict(model, img, target_size)
-    plot_preds(args.image, preds)
+    img_array = cv2.imread(image_path)
+    plot_preds(img_array, preds)
 
-  if args.image_url is not None:
+  if args.image_url is not None and args.image_url is not "":
     response = requests.get(args.image_url)
     img = Image.open(BytesIO(response.content))
     preds = predict(model, img, target_size)
-    plot_preds(img, preds)
+    img_array = io.imread(args.image_url)
+    plot_preds(img_array, preds)
